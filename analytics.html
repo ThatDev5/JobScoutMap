@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JobScout — Analytics</title>
+  <style>
+    :root {
+      --ink: #17201b;
+      --muted: #65726c;
+      --panel: #f7f5ef;
+      --paper: #fffefa;
+      --line: #d9ded5;
+      --green: #287a5c;
+      --green-dark: #155743;
+      --gold: #b87a18;
+      --red: #c04a3b;
+      --bg: #e9ede7;
+      --shadow: 0 8px 32px rgba(35,44,38,0.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+    h1, h2, h3, p { margin: 0; }
+
+    /* ── Header ── */
+    .top-bar {
+      background: linear-gradient(135deg, #0b3826 0%, var(--green-dark) 55%, #1e7d54 100%);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .top-bar h1 { color: #fffefa; font-size: 1.3rem; }
+    .top-bar p  { color: rgba(255,254,250,0.65); font-size: 0.78rem; margin-top: 3px; }
+    .top-bar-right { display: flex; align-items: center; gap: 10px; }
+    #lastUpdated { color: rgba(255,254,250,0.55); font-size: 0.78rem; }
+
+    /* ── Buttons ── */
+    button {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      color: var(--ink);
+      padding: 9px 16px;
+      font: inherit;
+      font-weight: 700;
+      font-size: 0.84rem;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+    button:disabled { opacity: 0.55; cursor: wait; transform: none; box-shadow: none; }
+    .btn-primary {
+      background: var(--green-dark);
+      color: #fffefa;
+      border-color: transparent;
+      box-shadow: 0 4px 14px rgba(21,87,67,0.2);
+    }
+    .btn-ghost {
+      background: rgba(255,254,250,0.12);
+      color: #fffefa;
+      border-color: rgba(255,254,250,0.25);
+    }
+    .btn-ghost:hover { background: rgba(255,254,250,0.22); transform: none; }
+    .btn-sm { padding: 5px 11px; font-size: 0.76rem; font-weight: 700; }
+
+    /* ── Shell ── */
+    .shell {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 28px 20px 64px;
+    }
+
+    /* ── Setup card ── */
+    .setup-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+    }
+    .setup-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 36px 32px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: var(--shadow);
+    }
+    .setup-card .icon { font-size: 2.4rem; margin-bottom: 16px; }
+    .setup-card h2 { font-size: 1.3rem; margin-bottom: 8px; }
+    .setup-card .sub { color: var(--muted); font-size: 0.88rem; line-height: 1.55; margin-bottom: 22px; }
+    .input-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .input-row input {
+      flex: 1;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 13px;
+      font: inherit;
+      font-size: 0.9rem;
+      background: var(--bg);
+      color: var(--ink);
+      outline: none;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+    .input-row input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(40,122,92,0.15);
+    }
+    .setup-help { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+    .setup-help a { color: var(--green); font-weight: 700; }
+    #setupError { color: var(--red); font-size: 0.82rem; margin-top: 10px; min-height: 18px; }
+
+    /* ── Stat grid ── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+    .stat-card.accent { border-left: 4px solid var(--green); }
+    .stat-card .val {
+      font-size: 2.2rem;
+      font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+    .stat-card .lbl {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+    .stat-card .trend {
+      font-size: 0.78rem;
+      color: var(--green);
+      margin-top: 4px;
+      font-weight: 650;
+    }
+
+    /* ── Section card ── */
+    .section {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 22px 24px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+    .section-title {
+      font-size: 0.72rem;
+      font-weight: 750;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+
+    /* ── Bar chart ── */
+    .chart-area {
+      overflow-x: auto;
+    }
+    .chart-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 5px;
+      height: 150px;
+      padding-bottom: 28px;
+      position: relative;
+      min-width: 320px;
+    }
+    .chart-bars::after {
+      content: '';
+      position: absolute;
+      bottom: 28px;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--line);
+    }
+    .bar-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 3px;
+      height: 100%;
+      position: relative;
+    }
+    .bar {
+      width: 100%;
+      max-width: 32px;
+      border-radius: 3px 3px 0 0;
+      min-height: 3px;
+      transition: opacity 140ms ease;
+      cursor: default;
+    }
+    .bar.views   { background: var(--green); }
+    .bar.uniques { background: #8ecbb4; }
+    .bar-col:hover .bar { opacity: 0.75; }
+    .bar-date {
+      position: absolute;
+      bottom: -22px;
+      font-size: 0.58rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .chart-legend {
+      display: flex;
+      gap: 16px;
+      margin-top: 10px;
+    }
+    .leg { display: flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--muted); }
+    .leg-dot { width: 10px; height: 10px; border-radius: 3px; }
+    .leg-dot.views   { background: var(--green); }
+    .leg-dot.uniques { background: #8ecbb4; }
+
+    /* ── Referrers ── */
+    .ref-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .ref-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--bg);
+      border-radius: 8px;
+    }
+    .ref-name { font-size: 0.88rem; font-weight: 700; }
+    .ref-meta { font-size: 0.76rem; color: var(--muted); white-space: nowrap; }
+    .ref-bar-wrap {
+      grid-column: 1 / -1;
+      height: 3px;
+      background: var(--line);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 2px;
+    }
+    .ref-bar-fill { height: 100%; background: var(--green); border-radius: 999px; }
+
+    /* ── Empty / message ── */
+    .empty { text-align: center; padding: 24px; color: var(--muted); font-size: 0.88rem; }
+    .notice {
+      background: #fef3c7;
+      border: 1px solid #d4a339;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.82rem;
+      color: #78450a;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 600px) {
+      .top-bar { padding: 14px 16px; }
+      .shell { padding: 16px 14px 48px; }
+      .setup-card { padding: 24px 18px; }
+      .stat-grid { grid-template-columns: 1fr 1fr; }
+      .section { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div>
+    <h1>📊 JobScout Analytics</h1>
+    <p>GitHub Pages traffic · Last 14 days</p>
+  </div>
+  <div class="top-bar-right">
+    <span id="lastUpdated"></span>
+    <button class="btn-ghost btn-sm" id="refreshBtn" onclick="loadStats()">↻ Refresh</button>
+    <button class="btn-ghost btn-sm" id="disconnectBtn" onclick="disconnect()" hidden>Disconnect</button>
+  </div>
+</div>
+
+<div class="shell">
+
+  <!-- ── Setup ── -->
+  <div id="setupView" class="setup-wrap">
+    <div class="setup-card">
+      <div class="icon">🔑</div>
+      <h2>Connect your GitHub</h2>
+      <p class="sub">
+        GitHub automatically tracks every visit to your live JobScout site. Paste a GitHub
+        personal access token below to pull that data — it stays in your browser and is never sent anywhere else.
+      </p>
+      <div class="input-row">
+        <input type="password" id="patInput" placeholder="ghp_xxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+        <button class="btn-primary" id="connectBtn" onclick="connect()">Connect</button>
+      </div>
+      <p class="setup-help">
+        No token yet?
+        <a href="https://github.com/settings/tokens/new?scopes=repo&description=JobScout+Analytics" target="_blank" rel="noopener noreferrer">
+          Create one here
+        </a>
+        — tick the <strong>repo</strong> scope, click Generate, copy it above.
+      </p>
+      <div id="setupError"></div>
+    </div>
+  </div>
+
+  <!-- ── Dashboard ── -->
+  <div id="dashView" hidden>
+
+    <div class="notice" id="dataNotice" hidden>
+      ⚠️ Your site may be new — GitHub only starts tracking traffic after your first visitor, and data can take up to 24 hours to appear.
+    </div>
+
+    <div class="stat-grid" id="statGrid"></div>
+
+    <div class="section">
+      <div class="section-title">Daily Traffic — Views &amp; Unique Visitors</div>
+      <div class="chart-area">
+        <div class="chart-bars" id="chartBars"></div>
+      </div>
+      <div class="chart-legend">
+        <div class="leg"><div class="leg-dot views"></div>Page views</div>
+        <div class="leg"><div class="leg-dot uniques"></div>Unique visitors</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Where Visitors Came From</div>
+      <ul class="ref-list" id="refList"></ul>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  var REPO = "ThatDev5/JobScoutMap";
+  var PAT_KEY = "jsa-pat-v1";
+
+  function getToken() { return localStorage.getItem(PAT_KEY); }
+
+  function connect() {
+    var pat = document.getElementById("patInput").value.trim();
+    if (!pat) return;
+    document.getElementById("setupError").textContent = "";
+    document.getElementById("connectBtn").disabled = true;
+    document.getElementById("connectBtn").textContent = "Connecting…";
+    localStorage.setItem(PAT_KEY, pat);
+    loadStats(true);
+  }
+
+  function disconnect() {
+    localStorage.removeItem(PAT_KEY);
+    document.getElementById("setupView").hidden = false;
+    document.getElementById("dashView").hidden = true;
+    document.getElementById("disconnectBtn").hidden = true;
+    document.getElementById("lastUpdated").textContent = "";
+    document.getElementById("patInput").value = "";
+  }
+
+  function apiFetch(path) {
+    return fetch("https://api.github.com/repos/" + REPO + path, {
+      headers: {
+        Authorization: "token " + getToken(),
+        Accept: "application/vnd.github.v3+json"
+      }
+    }).then(function(res) {
+      if (res.status === 401) throw new Error("invalid_token");
+      if (res.status === 403) throw new Error("no_permission");
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    });
+  }
+
+  function fmt(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
+    if (n >= 1000)    return (n / 1000).toFixed(1) + "k";
+    return String(n);
+  }
+
+  function fmtDate(iso) {
+    var d = new Date(iso);
+    return (d.getMonth() + 1) + "/" + d.getDate();
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function statCard(val, label, accent, trend) {
+    return '<div class="stat-card' + (accent ? " accent" : "") + '">' +
+      '<div class="val">' + escHtml(val) + '</div>' +
+      '<div class="lbl">' + escHtml(label) + '</div>' +
+      (trend ? '<div class="trend">' + escHtml(trend) + '</div>' : '') +
+      '</div>';
+  }
+
+  function loadStats(isFirstLoad) {
+    if (!getToken()) return;
+    var btn = document.getElementById("refreshBtn");
+    btn.disabled = true;
+    btn.textContent = "Loading…";
+
+    Promise.all([
+      apiFetch("/traffic/views"),
+      apiFetch("/traffic/popular/referrers")
+    ]).then(function(results) {
+      var views = results[0];
+      var refs  = results[1];
+      var daily = views.views || [];
+
+      // ── Stat cards ──
+      var todayIso  = new Date().toISOString().slice(0, 10);
+      var today     = daily.find(function(v) { return v.timestamp.slice(0,10) === todayIso; });
+      var yesterday = daily.find(function(v) {
+        var d = new Date(); d.setDate(d.getDate() - 1);
+        return v.timestamp.slice(0,10) === d.toISOString().slice(0,10);
+      });
+      var peak = daily.reduce(function(best, v) { return v.count > (best ? best.count : 0) ? v : best; }, null);
+
+      var todayCount = today ? today.count : 0;
+      var yesterdayCount = yesterday ? yesterday.count : 0;
+      var trendText = todayCount > yesterdayCount
+        ? "▲ " + (todayCount - yesterdayCount) + " more than yesterday"
+        : todayCount < yesterdayCount && yesterdayCount > 0
+          ? "▼ " + (yesterdayCount - todayCount) + " less than yesterday"
+          : "";
+
+      document.getElementById("statGrid").innerHTML =
+        statCard(fmt(views.uniques), "Unique Visitors (14d)", true, "") +
+        statCard(fmt(views.count),   "Total Page Views (14d)", false, "") +
+        statCard(fmt(todayCount),    "Views Today", false, trendText) +
+        statCard(peak ? fmtDate(peak.timestamp) + " (" + fmt(peak.count) + ")" : "—", "Peak Day", false, "");
+
+      // ── Bar chart ──
+      var maxVal = Math.max.apply(null, daily.map(function(v){ return v.count; }).concat([1]));
+      if (daily.length) {
+        document.getElementById("chartBars").innerHTML = daily.map(function(v) {
+          var h  = Math.max(3, Math.round((v.count   / maxVal) * 120));
+          var uh = Math.max(3, Math.round((v.uniques / maxVal) * 120));
+          return '<div class="bar-col">' +
+            '<div class="bar views"   style="height:' + h  + 'px" title="' + v.count   + ' views — '   + fmtDate(v.timestamp) + '"></div>' +
+            '<div class="bar uniques" style="height:' + uh + 'px" title="' + v.uniques + ' unique — ' + fmtDate(v.timestamp) + '"></div>' +
+            '<span class="bar-date">' + fmtDate(v.timestamp) + '</span>' +
+          '</div>';
+        }).join("");
+      } else {
+        document.getElementById("chartBars").innerHTML = '<div class="empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">No data yet</div>';
+        document.getElementById("dataNotice").hidden = false;
+      }
+
+      // ── Referrers ──
+      var maxRef = Math.max.apply(null, (refs || []).map(function(r){ return r.count; }).concat([1]));
+      document.getElementById("refList").innerHTML = (refs && refs.length)
+        ? refs.slice(0,10).map(function(r) {
+            var pct = Math.round((r.count / maxRef) * 100);
+            var name = r.referrer || "Direct / unknown";
+            return '<li class="ref-item">' +
+              '<span class="ref-name">' + escHtml(name) + '</span>' +
+              '<span class="ref-meta">' + r.count + ' views · ' + r.uniques + ' unique</span>' +
+              '<div class="ref-bar-wrap"><div class="ref-bar-fill" style="width:' + pct + '%"></div></div>' +
+            '</li>';
+          }).join("")
+        : '<li class="empty">No referrer data yet — traffic will appear here as people find your site.</li>';
+
+      // ── Show dashboard ──
+      document.getElementById("setupView").hidden  = true;
+      document.getElementById("dashView").hidden   = false;
+      document.getElementById("disconnectBtn").hidden = false;
+      document.getElementById("lastUpdated").textContent = "Updated " + new Date().toLocaleTimeString();
+
+    }).catch(function(err) {
+      if (err.message === "invalid_token") {
+        document.getElementById("setupError").textContent = "Token not recognized — double-check it and try again.";
+        localStorage.removeItem(PAT_KEY);
+        document.getElementById("setupView").hidden = false;
+        document.getElementById("dashView").hidden  = true;
+        document.getElementById("disconnectBtn").hidden = true;
+      } else if (err.message === "no_permission") {
+        document.getElementById("setupError").textContent = "Token needs the 'repo' scope. Create a new one with that scope checked.";
+        localStorage.removeItem(PAT_KEY);
+        document.getElementById("setupView").hidden = false;
+        document.getElementById("dashView").hidden  = true;
+        document.getElementById("disconnectBtn").hidden = true;
+      } else {
+        document.getElementById("lastUpdated").textContent = "Error: " + err.message;
+      }
+    }).finally(function() {
+      document.getElementById("connectBtn").disabled = false;
+      document.getElementById("connectBtn").textContent = "Connect";
+      btn.disabled = false;
+      btn.textContent = "↻ Refresh";
+    });
+  }
+
+  document.getElementById("patInput").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") connect();
+  });
+
+  // Auto-init if token already saved
+  if (getToken()) {
+    document.getElementById("setupView").hidden = true;
+    loadStats();
+    setInterval(loadStats, 5 * 60 * 1000); // refresh every 5 min
+  }
+</script>
+</body>
+</html>
