@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>JobScout Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="search-panel" aria-label="Job search inputs">
+        <div class="brand-row">
+          <div class="brand-mark" aria-hidden="true">JS</div>
+          <div>
+            <h1>JobScout Map</h1>
+            <p>Local AI job matching</p>
+          </div>
+          <button class="theme-toggle" id="themeToggle" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">◑</button>
+        </div>
+
+        <form id="scanForm" class="scan-form">
+          <div class="location-grid">
+            <div>
+              <label for="townInput">Town / City</label>
+              <input
+                id="townInput"
+                name="town"
+                type="text"
+                value="Austin"
+                autocomplete="address-level2"
+                placeholder="Austin"
+                required
+              >
+            </div>
+            <div>
+              <label for="stateInput">State</label>
+              <input
+                id="stateInput"
+                name="state"
+                type="text"
+                value="TX"
+                autocomplete="address-level1"
+                placeholder="TX"
+                maxlength="2"
+                pattern="[A-Za-z]{2}"
+                required
+              >
+            </div>
+            <button class="icon-button" id="resetLocation" type="button" title="Reset location" aria-label="Reset location">R</button>
+          </div>
+
+          <div class="field-split">
+            <div>
+              <label for="roleInput">Target role</label>
+              <input
+                id="roleInput"
+                name="role"
+                type="text"
+                value="Server"
+                placeholder="Server, cashier, data analyst"
+              >
+            </div>
+            <div>
+              <label for="experienceInput">Experience</label>
+              <select id="experienceInput" name="experience">
+                <option value="0">Entry level</option>
+                <option value="1" selected>1+ years</option>
+                <option value="3">3+ years</option>
+                <option value="5">5+ years</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="qual-header">
+            <label>Qualifications</label>
+            <span class="qual-hint">Click chip to set expert · × to remove</span>
+          </div>
+          <div id="qualChips" class="qual-chips"></div>
+          <div class="qual-add-row">
+            <input id="qualInput" type="text" list="qualSuggestions" placeholder="Add a skill...">
+            <datalist id="qualSuggestions">
+              <option value="customer service">
+              <option value="cash handling">
+              <option value="pos">
+              <option value="sales">
+              <option value="food safety">
+              <option value="serving">
+              <option value="barista">
+              <option value="bilingual">
+              <option value="excel">
+              <option value="administration">
+              <option value="inventory">
+              <option value="warehouse">
+              <option value="forklift">
+              <option value="driving">
+              <option value="healthcare">
+              <option value="cpr">
+              <option value="childcare">
+              <option value="security">
+              <option value="maintenance">
+              <option value="construction">
+              <option value="manufacturing">
+              <option value="technical support">
+              <option value="javascript">
+              <option value="data analysis">
+              <option value="marketing">
+              <option value="management">
+              <option value="cleaning">
+            </datalist>
+            <button id="qualAdd" type="button" class="qual-add-btn">+ Add</button>
+          </div>
+
+          <div class="slider-row">
+            <label for="radiusInput">Scan radius</label>
+            <output id="radiusValue" for="radiusInput">8 mi</output>
+          </div>
+          <input id="radiusInput" name="radius" type="range" min="2" max="20" step="1" value="8">
+
+          <fieldset class="preference-grid">
+            <legend>Preferences</legend>
+            <label>
+              <input id="entryFriendlyInput" type="checkbox" checked>
+              Entry friendly
+            </label>
+            <label>
+              <input id="highRatedInput" type="checkbox">
+              Highly rated
+            </label>
+            <label>
+              <input id="closeOnlyInput" type="checkbox">
+              Closest first
+            </label>
+          </fieldset>
+
+          <button class="primary-button" id="scanButton" type="submit">
+            Run Scan
+          </button>
+        </form>
+
+        <div class="scan-status" aria-live="polite">
+          <div class="status-line">
+            <span id="statusText">Ready to scan nearby employers</span>
+            <span id="statusCount">0 found</span>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <div id="progressFill"></div>
+          </div>
+        </div>
+
+        <div class="support-section">
+          <p class="support-label">Support the developer</p>
+          <a href="https://venmo.com/Wyatt-Brickner" target="_blank" rel="noopener noreferrer" class="venmo-button">
+            &#x1F4B8; Venmo @Wyatt-Brickner
+          </a>
+        </div>
+      </aside>
+
+      <section class="map-panel" aria-label="Interactive job map">
+        <div class="map-topbar">
+          <div>
+            <p id="mapEyebrow">Austin, TX</p>
+            <h2 id="mapTitle">Nearby job market</h2>
+          </div>
+          <div class="map-actions" aria-label="Map controls">
+            <button class="icon-button wide" id="recenterMap" type="button" title="Recenter map" aria-label="Recenter map">Center</button>
+          </div>
+        </div>
+
+        <div class="map-stage">
+          <div id="jobMap" aria-label="Map of matched employers"></div>
+          <div id="mapMessage" class="map-message">Enter location and click Run Scan</div>
+          <div class="map-hud">
+            <span id="selectedSummary">Click a marker or result</span>
+          </div>
+          <div class="legend" aria-label="Map legend">
+            <span><i class="dot high"></i>Strong</span>
+            <span><i class="dot mid"></i>Good</span>
+            <span><i class="dot low"></i>Explore</span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="results-panel" aria-label="Matched jobs">
+        <div class="results-head">
+          <div>
+            <p id="resultEyebrow">AI ranked matches</p>
+            <h2 id="resultTitle">Best jobs for you</h2>
+          </div>
+          <div class="results-head-controls">
+            <select id="resultFilter" aria-label="Filter results">
+              <option value="all">All matches</option>
+              <option value="strong">Strong matches</option>
+              <option value="entry">Entry friendly</option>
+              <option value="rated">Highly rated</option>
+              <option value="saved">Saved ♥</option>
+            </select>
+            <button class="icon-button wide" id="exportCsv" type="button" title="Export results to CSV">Export CSV</button>
+          </div>
+        </div>
+        <div id="matchStats" class="match-stats">
+          <div><strong>0</strong><span>Businesses</span></div>
+          <div><strong>0</strong><span>Role fits</span></div>
+          <div><strong>0%</strong><span>Top match</span></div>
+        </div>
+        <div id="skillGapBanner" class="skill-gap-banner" hidden></div>
+        <div id="resultsList" class="results-list"></div>
+      </aside>
+    </main>
+
+    <nav class="mobile-tabs" aria-label="Page navigation">
+      <button class="tab-btn active" data-panel="search-panel" aria-label="Search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="22" y2="22"/></svg>
+        Search
+      </button>
+      <button class="tab-btn" data-panel="map-panel" aria-label="Map">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+        Map
+      </button>
+      <button class="tab-btn" data-panel="results-panel" aria-label="Results">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        Results
+      </button>
+    </nav>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="app.js"></script>
+  </body>
+</html>
