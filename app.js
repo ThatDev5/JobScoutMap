@@ -743,10 +743,18 @@
       return preferences.skills.includes(tag);
     });
 
+    // Only use the user's typed role when it actually fits this business
+    const roleText = (role.title + " " + profile.label + " " + (profile.matchTerms || []).join(" ") + " " + tags.join(" ")).toLowerCase();
+    const typedRole = preferences.role.trim();
+    const roleMatchScore = typedRole ? fuzzyRoleScore(typedRole.toLowerCase(), roleText) : 0;
+    const displayRole = (typedRole && roleMatchScore >= 8)
+      ? typedRole.replace(/\b\w/g, function (c) { return c.toUpperCase(); })
+      : role.title;
+
     return {
       id: place.id,
       business: place.name,
-      role: preferences.role.trim() || role.title,
+      role: displayRole,
       category: profile.label,
       tags: tags,
       years: role.years,
@@ -782,18 +790,31 @@
   }
 
   function scoreBusiness(place, role, tags, distance, radius, preferences, profile) {
-    const roleText = (role.title + " " + profile.label + " " + tags.join(" ")).toLowerCase();
+    const roleText = (role.title + " " + profile.label + " " + (profile.matchTerms || []).join(" ") + " " + tags.join(" ")).toLowerCase();
     const target = preferences.role.toLowerCase();
     const matchedSkills = overlap(tags, preferences.skills);
-    const expertBonus = overlap(tags, preferences.expertSkills || []) * 5;
-    const roleScore = target ? fuzzyRoleScore(target, roleText) : 12;
-    const skillScore = matchedSkills ? Math.min(34, matchedSkills * 10 + expertBonus) : 0;
-    const experienceScore = Math.max(0, 16 - Math.max(0, role.years - preferences.years) * 7);
-    const distanceScore = Math.max(0, Math.round(20 - (distance / radius) * 18));
-    const ratingScore = 3;
-    const entryScore = preferences.entryFriendly && role.years <= 1 ? 5 : 0;
+    const expertBonus = overlap(tags, preferences.expertSkills || []) * 6;
+
+    const roleScore = target ? fuzzyRoleScore(target, roleText) : 10;
+    const skillScore = matchedSkills ? Math.min(40, matchedSkills * 12 + expertBonus) : 0;
+
+    // If the user specified a role but this business matches neither role nor skills, push to bottom
+    if (target && roleScore === 0 && matchedSkills === 0) return 20;
+
+    const experienceScore = Math.max(0, 12 - Math.max(0, role.years - preferences.years) * 6);
+    const distanceScore = Math.max(0, Math.round(14 - (distance / radius) * 12));
+    const entryScore = preferences.entryFriendly && role.years <= 1 ? 4 : 0;
+
+    // High-turnover industries are more likely to be actively hiring
+    const hiringBoosts = {
+      "Restaurant": 7, "Retail": 6, "Hospitality": 6,
+      "Healthcare": 4, "Logistics": 4, "Community": 3,
+      "Trades": 3, "Office": 2, "Technology": 2
+    };
+    const hiringBoost = hiringBoosts[profile.label] || 2;
+
     return clamp(
-      Math.round(18 + roleScore + skillScore + experienceScore + distanceScore + ratingScore + entryScore),
+      Math.round(roleScore + skillScore + experienceScore + distanceScore + entryScore + hiringBoost),
       20,
       99
     );
@@ -1224,16 +1245,21 @@
       const matchedSkills = biz.tags.filter(function (tag) {
         return preferences.skills.includes(tag);
       });
-      const roleText = (biz.role + " " + biz.category + " " + biz.tags.join(" ")).toLowerCase();
+      const profile = businessProfiles.find(function (p) { return p.label === biz.category; }) || businessProfiles[1];
+      const roleText = (biz.role + " " + biz.category + " " + (profile.matchTerms || []).join(" ") + " " + biz.tags.join(" ")).toLowerCase();
       const target = preferences.role.toLowerCase();
       const matched = overlap(biz.tags, preferences.skills);
-      const expertBonus = overlap(biz.tags, preferences.expertSkills || []) * 5;
-      const roleScore = target ? fuzzyRoleScore(target, roleText) : 12;
-      const skillScore = matched ? Math.min(34, matched * 10 + expertBonus) : 0;
-      const experienceScore = Math.max(0, 16 - Math.max(0, biz.years - preferences.years) * 7);
-      const distanceScore = Math.max(0, Math.round(20 - (biz.distance / state.radius) * 18));
-      const entryScore = preferences.entryFriendly && biz.years <= 1 ? 5 : 0;
-      const score = clamp(Math.round(18 + roleScore + skillScore + experienceScore + distanceScore + 3 + entryScore), 20, 99);
+      const expertBonus = overlap(biz.tags, preferences.expertSkills || []) * 6;
+      const roleScore = target ? fuzzyRoleScore(target, roleText) : 10;
+      const skillScore = matched ? Math.min(40, matched * 12 + expertBonus) : 0;
+      if (target && roleScore === 0 && matched === 0) {
+        return Object.assign({}, biz, { matchedSkills: matchedSkills, score: 20, grade: "low", reason: buildReason(matchedSkills, biz.distance, profile) });
+      }
+      const experienceScore = Math.max(0, 12 - Math.max(0, biz.years - preferences.years) * 6);
+      const distanceScore = Math.max(0, Math.round(14 - (biz.distance / state.radius) * 12));
+      const entryScore = preferences.entryFriendly && biz.years <= 1 ? 4 : 0;
+      const hiringBoosts = { "Restaurant": 7, "Retail": 6, "Hospitality": 6, "Healthcare": 4, "Logistics": 4, "Community": 3, "Trades": 3, "Office": 2, "Technology": 2 };
+      const score = clamp(Math.round(roleScore + skillScore + experienceScore + distanceScore + entryScore + (hiringBoosts[biz.category] || 2)), 20, 99);
       return Object.assign({}, biz, {
         matchedSkills: matchedSkills,
         score: score,
